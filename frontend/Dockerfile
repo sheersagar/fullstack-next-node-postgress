@@ -1,9 +1,23 @@
 FROM node:18-alpine AS base
+
+FROM base AS deps
 WORKDIR /app
-COPY . .
+COPY package*.json ./
 RUN npm install
 
-RUN npm run build
+
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN yarn build && ls -l /app/.next
+
+FROM base AS runner
+WORKDIR /app
 ENV NODE_ENV production
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
 EXPOSE 3000
 CMD ["npm", "start"]
